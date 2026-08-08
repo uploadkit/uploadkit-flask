@@ -120,6 +120,10 @@ from uploadkit_flask import as_uploadable, get_storage_provider, json_error_resp
 from uploadkit_security import default_validators
 
 
+def notify(result):
+    ...
+
+
 @app.post("/upload")
 def upload_view():
     storage = get_storage_provider()  # Boto3S3Storage for AWS or MinIO
@@ -135,6 +139,7 @@ def upload_view():
             as_uploadable(uploaded),
             bucket=current_app.config["UPLOADKIT_BUCKET"],
             object_name=uploaded.filename,
+            after_upload=notify,  # or a Celery-like task with .delay
         )
     except UploaderError as exc:
         return json_error_response(exc)
@@ -144,6 +149,10 @@ def upload_view():
         "etag": result.etag,
     })
 ```
+
+## After-upload
+
+Pass Core `after_upload` on `Uploader.upload`: a sync callback `(result) -> None`, or a Celery-like object with `.delay(**result.as_task_kwargs())`. The hook runs once after a successful put; exceptions propagate. Full semantics: [uploadkit Core README](https://github.com/uploadkit/uploadkit#after-upload-hooks).
 
 ## Architecture
 
